@@ -1,79 +1,84 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# Bus Driver App — GPS Streaming Client (React Native)
 
-# Getting Started
+> The Android/iOS app that drivers use in the **[Real-Time College Bus Tracking Platform](https://github.com/karrisubhash/bus_tracker)**. The driver signs in, claims a trip, and the app streams GPS to the backend every 5 seconds from a background service, so tracking keeps running while the phone is locked.
 
->**Note**: Make sure you have completed the [React Native - Environment Setup](https://reactnative.dev/docs/environment-setup) instructions till "Creating a new application" step, before proceeding.
+[![React Native](https://img.shields.io/badge/React_Native-0.73-20232A?logo=react&logoColor=61DAFB)](#)
+[![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)](#)
+[![Backend](https://img.shields.io/badge/Backend-Django_Channels-092E20?logo=django)](https://github.com/karrisubhash/bus_tracker)
 
-## Step 1: Start the Metro Server
+**Backend (live):** https://college-bus-tracking-system-ri73.onrender.com · **Demo video:** https://youtu.be/i2Xq8YOuVXY
 
-First, you will need to start **Metro**, the JavaScript _bundler_ that ships _with_ React Native.
+## Features
 
-To start Metro, run the following command from the _root_ of your React Native project:
+- JWT sign-in against the Django backend (`/api/token/`).
+- Enter a trip ID and claim it with `POST /api/trips/{id}/claim/`.
+- **Background tracking** with `react-native-background-actions`: a loop that reads a high-accuracy fix (`react-native-geolocation-service`) and posts `{lat, lon}` every 5 s.
+- Tolerates network drops: a failed post is logged and retried on the next cycle without stopping tracking.
+- Ends the trip, and reports or resolves a breakdown from the app (`/end/`, `/report-issue/`, `/resolve-issue/`).
 
-```bash
-# using npm
-npm start
+## How it fits together
 
-# OR using Yarn
-yarn start
+```mermaid
+sequenceDiagram
+    participant D as Driver App
+    participant API as Django API
+    participant WS as Channels / Redis
+    participant S as Student & Admin maps
+    D->>API: POST /api/token/ (credentials)
+    API-->>D: access + refresh JWT (role claim)
+    D->>API: POST /api/trips/{id}/claim/
+    loop every 5 s (background service)
+        D->>API: POST /api/trips/{id}/pings/ {lat, lon}
+        API->>WS: group_send("bus_locations")
+        WS-->>S: live position
+    end
+    D->>API: POST /api/trips/{id}/end/
 ```
 
-## Step 2: Start your Application
+## Tech stack
 
-Let Metro Bundler run in its _own_ terminal. Open a _new_ terminal from the _root_ of your React Native project. Run the following command to start your _Android_ or _iOS_ app:
+React Native 0.73 · TypeScript · axios · react-native-geolocation-service · react-native-background-actions
 
-### For Android
+## Getting started
 
-```bash
-# using npm
-npm run android
-
-# OR using Yarn
-yarn android
-```
-
-### For iOS
+Prerequisites: the [React Native environment setup](https://reactnative.dev/docs/set-up-your-environment) (Node 18+, JDK 17, Android Studio).
 
 ```bash
-# using npm
-npm run ios
-
-# OR using Yarn
-yarn ios
+git clone https://github.com/karrisubhash/Bus-Driver-Application.git
+cd Bus-Driver-Application
+npm install
+npm start            # Metro
+npm run android      # in a second terminal
 ```
 
-If everything is set up _correctly_, you should see your new app running in your _Android Emulator_ or _iOS Simulator_ shortly provided you have set up your emulator/simulator correctly.
+The backend URL is set in `App.tsx` (`BASE_URL`). Point it at your own deployment or at `http://10.0.2.2:8000` for a local backend on the Android emulator.
 
-This is one way to run your app — you can also run it directly from within Android Studio and Xcode respectively.
+### Permissions
 
-## Step 3: Modifying your App
+Android needs `ACCESS_FINE_LOCATION`, `ACCESS_BACKGROUND_LOCATION` and `FOREGROUND_SERVICE` for background tracking.
 
-Now that you have successfully run the app, let's modify it.
+## Project structure
 
-1. Open `App.tsx` in your text editor of choice and edit some lines.
-2. For **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Developer Menu** (<kbd>Ctrl</kbd> + <kbd>M</kbd> (on Window and Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (on macOS)) to see your changes!
+```
+App.tsx          # login, trip claim, background tracking loop, issue reporting
+android/  ios/   # native projects
+__tests__/       # Jest smoke test
+```
 
-   For **iOS**: Hit <kbd>Cmd ⌘</kbd> + <kbd>R</kbd> in your iOS Simulator to reload the app and see your changes!
+## Testing
 
-## Congratulations! :tada:
+```bash
+npm test
+```
 
-You've successfully run and modified your React Native App. :partying_face:
+## Screenshots
 
-### Now what?
+<!-- TODO(Subhash): add 2 phone screenshots (login, tracking screen) -->
 
-- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
-- If you're curious to learn more about React Native, check out the [Introduction to React Native](https://reactnative.dev/docs/getting-started).
+## Future improvements
 
-# Troubleshooting
-
-If you can't get this to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
-
-# Learn More
-
-To learn more about React Native, take a look at the following resources:
-
-- [React Native Website](https://reactnative.dev) - learn more about React Native.
-- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
-- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
-- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
-- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+- Move `BASE_URL` into build config (`react-native-config`).
+- Persist the session securely (Keychain/Keystore) and refresh the JWT automatically. The token currently lives in component state only.
+- Remove the unused dependencies (`async-storage`, `netinfo`, `native-stack`) or wire them in.
+- Queue pings offline and send them in batches when the connection returns.
+- Split `App.tsx` into screens and services.
