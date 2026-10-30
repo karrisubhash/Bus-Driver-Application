@@ -71,9 +71,6 @@ __tests__/       # Jest smoke test
 npm test
 ```
 
-## Screenshots
-
-<!-- TODO(Subhash): add 2 phone screenshots (login, tracking screen) -->
 
 ## Future improvements
 
