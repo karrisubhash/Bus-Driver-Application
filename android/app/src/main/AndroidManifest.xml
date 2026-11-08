@@ -4,14 +4,16 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
 
-    <!-- Location -->
+    <!-- Location (while in use). Background location is NOT requested: the
+         foreground service below (type=location) keeps tracking alive with the
+         screen off, which avoids Play Store background-location review. -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
 
-    <!-- Foreground service -->
+    <!-- Foreground service (Android 14+ also requires the typed permission) -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
 
     <!-- Android 13+ -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
@@ -26,7 +28,7 @@
         android:allowBackup="false"
         android:theme="@style/AppTheme"
         android:supportsRtl="true"
-        android:usesCleartextTraffic="true">
+        android:usesCleartextTraffic="false">
 
         <activity
             android:name=".MainActivity"
